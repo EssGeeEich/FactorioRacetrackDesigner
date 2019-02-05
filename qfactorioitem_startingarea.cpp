@@ -6,34 +6,6 @@
 #include <QFormLayout>
 #include <QDoubleSpinBox>
 
-/*  Create a new Qt Graphics Item for the Starting Area.
- *  This includes the Starting Area itself (in a violet color)
- *  PLUS the heading of the Starting Area (in a red color)
- */
-class QGraphicsStartingArea : public QCallbackItem<QGraphicsRectItem>
-{
-public:
-	QGraphicsStartingArea()
-		: QCallbackItem<QGraphicsRectItem>(QRectF(0,0,16,8))
-	{
-		// Set our color
-		setPen(QColor(152,36,170));
-
-		// Set up our "flashlights"
-		QGraphicsRectItem* head = new QGraphicsRectItem(0,0,0.6,rect().height(), this);
-		head->setPen(QPen(QColor(255,0,0)));
-
-		// Required so that our item can tell us when the user
-		// is dragging him around.
-		setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-
-		// Let the user select and drag our graphics item around.
-		setFlag(QGraphicsItem::ItemIsSelectable, true);
-		setFlag(QGraphicsItem::ItemIsMovable, true);
-	}
-};
-
-
 // Initialize our entity
 bool QFactorioItem<QFIT_STARTING_AREA>::initialize()
 {
@@ -42,17 +14,13 @@ bool QFactorioItem<QFIT_STARTING_AREA>::initialize()
 	m_propertyRot = nullptr;
 
 	// Create a new Starting Area (Graphics only)
-	QGraphicsStartingArea* gfxPtr = new QGraphicsStartingArea;
-
-	// Store it into our m_gfx unique_ptr object.
-	// Allows us to keep track of everything.
-	m_gfx.reset(gfxPtr);
+	m_gfx = std::make_unique<QGraphicsStartingArea>();
 
 	// Setup our rotation point to be at our center
 	m_gfx->setTransformOriginPoint(m_gfx->boundingRect().center());
 
 	// Add a callback for whenever an user is moving this graphics item around.
-	gfxPtr->setCallback(QGraphicsItem::ItemPositionHasChanged,
+	m_gfx->setCallback(QGraphicsItem::ItemPositionHasChanged,
 		[=](QVariant const& var)
 	{
 		// Make it update our "real" position
@@ -96,6 +64,16 @@ int QFactorioItem<QFIT_STARTING_AREA>::type() const
 	// This function MUST return our type!
 	// Failure to do so will corrupt our file saves.
 	return QFIT_STARTING_AREA;
+}
+
+void QFactorioItem<QFIT_STARTING_AREA>::unSelect()
+{
+	m_gfx->setHighlighted(false);
+}
+
+void QFactorioItem<QFIT_STARTING_AREA>::select()
+{
+	m_gfx->setHighlighted(true);
 }
 
 void QFactorioItem<QFIT_STARTING_AREA>::afterUnpopulate()

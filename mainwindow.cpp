@@ -73,7 +73,10 @@ void MainWindow::OnSelectedEntityChange()
 		lastItem->beforeUnpopulate();
 	emptySelection();
 	if(lastItem)
+	{
 		lastItem->afterUnpopulate();
+		lastItem->unSelect();
+	}
 
 	QTreeWidgetItem* item = ui->treeWidget->currentItem();
 	if(!item)
@@ -95,6 +98,7 @@ void MainWindow::OnSelectedEntityChange()
 		ui->propertyDockLayout->addWidget(ui->properties);
 
 		facItem->populatePropertiesPanel(ui->properties);
+		facItem->select();
 	}
 }
 

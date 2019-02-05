@@ -34,9 +34,11 @@ void QFactorioBasicItem::setId(quint32 id)
 	m_item.setData(0, QF_USERROLE_ITEM, static_cast<qulonglong>(m_id));
 }
 
+void QFactorioBasicItem::select(){}
+void QFactorioBasicItem::unSelect(){}
 void QFactorioBasicItem::updatePos(){}
 void QFactorioBasicItem::updateChildPos(){}
-void QFactorioBasicItem::populatePropertiesPanel(QWidget *){}
+void QFactorioBasicItem::populatePropertiesPanel(QWidget*){}
 void QFactorioBasicItem::beforeUnpopulate(){}
 void QFactorioBasicItem::afterUnpopulate(){}
 

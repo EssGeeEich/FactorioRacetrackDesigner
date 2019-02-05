@@ -23,7 +23,13 @@ void QFactorioTrackEditor::setBackgroundPixmap(QPixmap const& pixmap)
 	{
 		m_backgroundImage = this->addPixmap(pixmap);
 		if(m_backgroundImage)
+		{
 			m_backgroundImage->setZValue(-1);
+			m_backgroundImage->setFlag(QGraphicsItem::ItemIsSelectable, false);
+			m_backgroundImage->setFlag(QGraphicsItem::ItemIsMovable, false);
+			m_backgroundImage->setFlag(QGraphicsItem::ItemIsFocusable, false);
+			m_backgroundImage->setFlag(QGraphicsItem::ItemSendsGeometryChanges, false);
+		}
 	}
 }
 

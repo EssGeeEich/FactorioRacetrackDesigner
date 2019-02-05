@@ -1,93 +1,8 @@
 #include "qfactorioitem_checkpoint.h"
 #include "qfactoriotrackeditor.h"
 #include "qcallbackitem.h"
-
-#include <QGraphicsLineItem>
-#include <QGraphicsEllipseItem>
 #include <QFormLayout>
 #include <QDoubleSpinBox>
-
-/* Create a new Qt Graphics Item for the Checkpoint.
- * This entity is composed of two points and a joining line.
- * The line is green, with two yellow points at the two ends.
- * First things first, create the point class.
- */
-class QGraphicsCheckpointPoint : public QCallbackItem<QGraphicsEllipseItem>
-{
-public:
-	QGraphicsCheckpointPoint(qreal x, QGraphicsItem* parent)
-		: QCallbackItem<QGraphicsEllipseItem>(-3,-3,6,6,parent)
-	{
-		setBrush(QBrush(QColor(251, 192, 45, 200)));
-		setPen(Qt::NoPen);
-		setPos(QPointF(x,0));
-
-		// Required so that our item can tell us when the user
-		// is dragging him around.
-		setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-
-		// Let the user select and drag our graphics item around.
-		setFlag(QGraphicsItem::ItemIsSelectable, true);
-		setFlag(QGraphicsItem::ItemIsMovable, true);
-	}
-};
-class QGraphicsCheckpoint : public QCallbackItem<QGraphicsLineItem>
-{
-	QGraphicsCheckpointPoint* ptA;
-	QGraphicsCheckpointPoint* ptB;
-public:
-	QGraphicsCheckpoint()
-		: QCallbackItem<QGraphicsLineItem>(-20,0,20,0),
-		  ptA(nullptr),
-		  ptB(nullptr)
-	{
-		// Set our color
-		setPen(QPen(
-			QBrush(QColor(56, 142, 60)),
-			1,
-			Qt::SolidLine,
-			Qt::FlatCap,
-			Qt::MiterJoin
-		));
-
-
-		// Set up our points
-		ptA = new QGraphicsCheckpointPoint(line().p1().x(), this);
-		ptA->setCallback(QGraphicsItem::ItemPositionHasChanged,
-			[=](QVariant const& var)
-		{
-			QLineF l = line();
-			l.setP1(var.toPointF());
-			setLine(l);
-		});
-		ptB = new QGraphicsCheckpointPoint(line().p2().x(), this);
-		ptB->setCallback(QGraphicsItem::ItemPositionHasChanged,
-			[=](QVariant const& var)
-		{
-			QLineF l = line();
-			l.setP2(var.toPointF());
-			setLine(l);
-		});
-
-		setCallback(QGraphicsItem::ItemPositionHasChanged,
-			std::bind(&QGraphicsCheckpoint::updateChildPos, this));
-
-		// Required so that our item can tell us when the user
-		// is dragging him around.
-		setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-
-		// Let the user select and drag our graphics item around.
-		setFlag(QGraphicsItem::ItemIsSelectable, false);
-		setFlag(QGraphicsItem::ItemIsMovable, false);
-	}
-
-	void updateChildPos()
-	{
-		QLineF l = line();
-		ptA->setPos(l.p1());
-		ptB->setPos(l.p2());
-	}
-};
 
 bool QFactorioItem<QFIT_CHECKPOINT>::initialize()
 {
@@ -96,12 +11,19 @@ bool QFactorioItem<QFIT_CHECKPOINT>::initialize()
 	m_propertyX_B = nullptr;
 	m_propertyY_A = nullptr;
 	m_propertyY_B = nullptr;
-	QGraphicsCheckpoint* ckpt = new QGraphicsCheckpoint;
 
-	m_gfx.reset(ckpt);
-	editor()->addItem(ckpt);
+	// Create a new Checkpoint (Graphics only)
+	m_gfx = std::make_unique<QGraphicsCheckpoint>();
+
+	// Whenever the line changes, update our position
+	m_gfx->setUserCallback(QGraphicsCheckpoint::LineChangedUserCallback,
+		std::bind(&QFactorioItem<QFIT_CHECKPOINT>::updatePos, this));
+
+	// Add this graphics item to the editor
+	editor()->addItem(m_gfx.get());
 	updateChildPos();
 
+	// Assign a new Checkpoint ID
 	std::vector<QFactorioItem<QFIT_CHECKPOINT>*>
 		otherCheckpoints = editor()->findEntities<QFactorioItem<QFIT_CHECKPOINT>>();
 
@@ -116,7 +38,16 @@ bool QFactorioItem<QFIT_CHECKPOINT>::initialize()
 
 void QFactorioItem<QFIT_CHECKPOINT>::updatePos()
 {
-	// This should never get called, since we don't handle the parent's position.
+	// We need to call this manually, since the parent won't be calling this.
+	QLineF l = m_gfx->line();
+	if(m_propertyX_A)
+		m_propertyX_A->setValue(l.p1().x());
+	if(m_propertyY_A)
+		m_propertyY_A->setValue(l.p1().y());
+	if(m_propertyX_B)
+		m_propertyX_B->setValue(l.p2().x());
+	if(m_propertyY_B)
+		m_propertyY_B->setValue(l.p2().y());
 }
 
 void QFactorioItem<QFIT_CHECKPOINT>::updateChildPos()
@@ -136,9 +67,109 @@ int QFactorioItem<QFIT_CHECKPOINT>::type() const
 	return QFIT_CHECKPOINT;
 }
 
-void QFactorioItem<QFIT_CHECKPOINT>::populatePropertiesPanel(QWidget*)
+void QFactorioItem<QFIT_CHECKPOINT>::unSelect()
 {
+	m_gfx->setHighlighted(false);
+}
 
+void QFactorioItem<QFIT_CHECKPOINT>::select()
+{
+	m_gfx->setHighlighted(true);
+}
+
+void QFactorioItem<QFIT_CHECKPOINT>::afterUnpopulate()
+{
+	m_propertyX_A = nullptr;
+	m_propertyX_B = nullptr;
+	m_propertyY_A = nullptr;
+	m_propertyY_B = nullptr;
+	m_propertyId = nullptr;
+}
+
+void QFactorioItem<QFIT_CHECKPOINT>::populatePropertiesPanel(QWidget* panel)
+{
+	// Set up the properties panel...
+	if(!m_gfx)
+		return;
+
+	// Create a Form layout and add three properties
+	QFormLayout* layout = new QFormLayout(panel);
+	m_propertyX_A = new QDoubleSpinBox(panel);
+	m_propertyY_A = new QDoubleSpinBox(panel);
+	m_propertyX_B = new QDoubleSpinBox(panel);
+	m_propertyY_B = new QDoubleSpinBox(panel);
+	m_propertyId = new QSpinBox(panel);
+
+	// Put them in a form layout
+	layout->addRow(QObject::tr("Position A (X)"), m_propertyX_A);
+	layout->addRow(QObject::tr("Position A (Y)"), m_propertyY_A);
+	layout->addRow(QObject::tr("Position B (X)"), m_propertyX_B);
+	layout->addRow(QObject::tr("Position B (Y)"), m_propertyY_B);
+	layout->addRow(QObject::tr("Checkpoint ID"), m_propertyId);
+
+	// Set their limits
+	m_propertyX_A->setRange(-99999,99999);
+	m_propertyY_A->setRange(-99999,99999);
+	m_propertyX_B->setRange(-99999,99999);
+	m_propertyY_B->setRange(-99999,99999);
+	m_propertyId->setRange(1,99999);
+
+	// Set their current values
+	QLineF l = m_gfx->line();
+	m_propertyX_A->setValue(l.p1().x());
+	m_propertyY_A->setValue(l.p1().y());
+	m_propertyX_B->setValue(l.p2().x());
+	m_propertyY_B->setValue(l.p2().y());
+	m_propertyId->setValue(static_cast<int>(m_checkpointSeqId));
+
+	// When they change, update our values
+	QObject::connect(m_propertyX_A, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		[=](double val)
+	{
+		QLineF line = m_gfx->line();
+		QPointF pt = line.p1();
+			pt.rx() = val;
+		line.setP1(pt);
+		m_gfx->setLine(line);
+		m_gfx->updateChildPos();
+	});
+	QObject::connect(m_propertyY_A, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		[=](double val)
+	{
+		QLineF line = m_gfx->line();
+		QPointF pt = line.p1();
+			pt.ry() = val;
+		line.setP1(pt);
+		m_gfx->setLine(line);
+		m_gfx->updateChildPos();
+	});
+	QObject::connect(m_propertyX_B, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		[=](double val)
+	{
+		QLineF line = m_gfx->line();
+		QPointF pt = line.p2();
+			pt.rx() = val;
+		line.setP2(pt);
+		m_gfx->setLine(line);
+		m_gfx->updateChildPos();
+	});
+	QObject::connect(m_propertyY_B, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		[=](double val)
+	{
+		QLineF line = m_gfx->line();
+		QPointF pt = line.p2();
+			pt.ry() = val;
+		line.setP2(pt);
+		m_gfx->setLine(line);
+		m_gfx->updateChildPos();
+	});
+	QObject::connect(m_propertyId, qOverload<int>(&QSpinBox::valueChanged),
+		[=](int val)
+	{
+		if(val <= 0)
+			return;
+		setSequenceId(static_cast<quint32>(val));
+	});
 }
 
 void QFactorioItem<QFIT_CHECKPOINT>::setSequenceId(quint32 seqId)
@@ -159,23 +190,21 @@ quint32 QFactorioItem<QFIT_CHECKPOINT>::sequenceId() const
 
 QDataStream& QFactorioItem<QFIT_CHECKPOINT>::save(QDataStream& dst) const
 {
-	QGraphicsLineItem* line = dynamic_cast<QGraphicsLineItem*>(m_gfx.get());
 	// Save all the data required to represent this entity.
-	if(!line)
+	if(!m_gfx)
 	{
 		dst.setStatus(QDataStream::WriteFailed);
 		return dst;
 	}
 
-	dst << line->line() << sequenceId();
+	dst << m_gfx->line() << sequenceId();
 	return dst;
 }
 
 QDataStream& QFactorioItem<QFIT_CHECKPOINT>::load(QDataStream& src)
 {
-	QGraphicsCheckpoint* line = dynamic_cast<QGraphicsCheckpoint*>(m_gfx.get());
 	// Save all the data required to represent this entity.
-	if(!line)
+	if(!m_gfx)
 	{
 		src.setStatus(QDataStream::WriteFailed);
 		return src;
@@ -186,10 +215,10 @@ QDataStream& QFactorioItem<QFIT_CHECKPOINT>::load(QDataStream& src)
 	src >> lineF >> seqId;
 	if(src.status() == QDataStream::Ok)
 	{
-		line->setLine(lineF);
+		m_gfx->setLine(lineF);
 		setSequenceId(seqId);
 
-		line->updateChildPos();
+		m_gfx->updateChildPos();
 	}
 	return src;
 }

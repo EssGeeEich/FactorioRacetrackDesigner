@@ -34,7 +34,9 @@ SOURCES += \
     qfactorioitem_checkpoint.cpp \
     qfactorioconstants.cpp \
     qserializable.cpp \
-    qfactoriobasicitem.cpp
+    qfactoriobasicitem.cpp \
+    qfactorioitem_checkpoint_gfx.cpp \
+    qfactorioitem_startingarea_gfx.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -46,7 +48,9 @@ HEADERS += \
     qfactorioconstants.h \
     qfactoriobasicitem.h \
     qserializable.h \
-    qcallbackitem.h
+    qcallbackitem.h \
+    qfactorioitem_checkpoint_gfx.h \
+    qfactorioitem_startingarea_gfx.h
 
 FORMS += \
         mainwindow.ui

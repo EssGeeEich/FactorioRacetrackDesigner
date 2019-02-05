@@ -27,6 +27,9 @@ protected:
 
 	virtual void updatePos();
 	virtual void updateChildPos();
+
+	virtual void select();
+	virtual void unSelect();
 	virtual void populatePropertiesPanel(QWidget*);
 	virtual void beforeUnpopulate();
 	virtual void afterUnpopulate();
