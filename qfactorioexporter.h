@@ -9,7 +9,7 @@ struct QFactorioExporter {
 
 namespace Generated {
 	struct CheckpointRow {
-		std::vector<int> xCoords;
+		std::vector<int> yCoords;
 		int row;
 		QTextStream& Print(QTextStream&) const;
 	};

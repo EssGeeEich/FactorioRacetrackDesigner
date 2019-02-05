@@ -8,11 +8,11 @@ namespace Generated {
 	QTextStream& CheckpointRow::Print(QTextStream& s) const
 	{
 		s << "[" << row << "]={";
-		for(auto it = xCoords.begin(); it != xCoords.end(); ++it)
+		for(auto it = yCoords.begin(); it != yCoords.end(); ++it)
 		{
-			if(it != xCoords.begin())
+			if(it != yCoords.begin())
 				s << ",";
-			s << *it;
+			s << "[" << *it << "]=true";
 		}
 		s << "}";
 		return s;
@@ -119,19 +119,19 @@ bool QFactorioExporter::ExportScene(const QFactorioTrackEditor& m_scene, QTextSt
 
 			Generated::CheckpointLevel level;
 			Generated::CheckpointRow row;
-			for(int y = 0; y < h; ++y)
+			for(int x = 0; x < w; ++x)
 			{
-				row.row = y;
-				for(int x = 0; x < w; ++x)
+				row.row = x;
+				for(int y = 0; y < h; ++y)
 				{
 					if(bits[(y * w) + x] > 64)
-						row.xCoords.push_back(x);
+						row.yCoords.push_back(y);
 				}
 
-				if(row.xCoords.size())
+				if(row.yCoords.size())
 				{
 					level.points.push_back(std::move(row));
-					row.xCoords.clear();
+					row.yCoords.clear();
 				}
 			}
 			if(level.points.size())
