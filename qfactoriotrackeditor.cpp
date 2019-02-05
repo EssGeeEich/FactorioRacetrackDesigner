@@ -33,6 +33,13 @@ void QFactorioTrackEditor::setBackgroundPixmap(QPixmap const& pixmap)
 	}
 }
 
+QSize QFactorioTrackEditor::size() const
+{
+	if(m_backgroundImage)
+		return m_backgroundImage->pixmap().size();
+	return QSize(400,400);
+}
+
 quint32 QFactorioTrackEditor::getFreeId() const
 {
 	quint32 id = 0;

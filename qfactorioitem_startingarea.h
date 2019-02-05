@@ -29,6 +29,8 @@ public:
 	virtual int type() const override;
 	virtual QDataStream& save(QDataStream&) const override;
 	virtual QDataStream& load(QDataStream&) override;
+
+	QGraphicsStartingArea const* graphics() const;
 };
 
 #endif // QFACTORIOITEM_STARTINGAREA_H

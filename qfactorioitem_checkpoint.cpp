@@ -188,6 +188,11 @@ quint32 QFactorioItem<QFIT_CHECKPOINT>::sequenceId() const
 	return m_checkpointSeqId;
 }
 
+QGraphicsCheckpoint const* QFactorioItem<QFIT_CHECKPOINT>::graphics() const
+{
+	return m_gfx.get();
+}
+
 QDataStream& QFactorioItem<QFIT_CHECKPOINT>::save(QDataStream& dst) const
 {
 	// Save all the data required to represent this entity.

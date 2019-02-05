@@ -37,6 +37,8 @@ public:
 
 	void setSequenceId(quint32);
 	quint32 sequenceId() const;
+
+	QGraphicsCheckpoint const* graphics() const;
 };
 
 #endif // QFACTORIOITEM_CHECKPOINT_H

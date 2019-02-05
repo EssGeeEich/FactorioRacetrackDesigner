@@ -4,9 +4,11 @@
 #include <QImageReader>
 #include <QPixmap>
 #include <QMessageBox>
+#include <QTextStream>
 #include "qdragbutton.h"
 #include "qfactoriobasicitem.h"
 #include "qfactorioconstants.h"
+#include "qfactorioexporter.h"
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
@@ -181,3 +183,25 @@ void MainWindow::on_actionQuit_triggered()
 	qApp->quit();
 }
 
+void MainWindow::on_actionExport_EntityMap_triggered()
+{
+	QString generatedLua = QFileDialog::getSaveFileName(this,
+		tr("Export a Factorio MapEntity file..."),
+		QString(),
+		tr("Factorio MapEntity File (*.lua)")
+	);
+	if(generatedLua.isEmpty())
+		return;
+
+	QFile fOut(generatedLua);
+	fOut.open(QFile::WriteOnly);
+	QTextStream stream(&fOut);
+	stream.setRealNumberNotation(QTextStream::FixedNotation);
+	stream.setRealNumberPrecision(3);
+
+	if(!QFactorioExporter::ExportScene(m_scene, stream) || stream.status() != QTextStream::Ok)
+	{
+		QMessageBox::warning(this, tr("Cannot export MapEntity file"), tr("An error occurred while trying to export this file."));
+		return;
+	}
+}

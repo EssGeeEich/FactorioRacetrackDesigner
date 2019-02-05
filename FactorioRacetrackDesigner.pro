@@ -10,6 +10,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = FactorioRacetrackDesigner
 TEMPLATE = app
+VERSION = 0.3.0
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -36,7 +37,8 @@ SOURCES += \
     qserializable.cpp \
     qfactoriobasicitem.cpp \
     qfactorioitem_checkpoint_gfx.cpp \
-    qfactorioitem_startingarea_gfx.cpp
+    qfactorioitem_startingarea_gfx.cpp \
+    qfactorioexporter.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -50,7 +52,8 @@ HEADERS += \
     qserializable.h \
     qcallbackitem.h \
     qfactorioitem_checkpoint_gfx.h \
-    qfactorioitem_startingarea_gfx.h
+    qfactorioitem_startingarea_gfx.h \
+    qfactorioexporter.h
 
 FORMS += \
         mainwindow.ui

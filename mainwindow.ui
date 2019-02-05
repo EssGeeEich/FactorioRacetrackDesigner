@@ -66,6 +66,7 @@
     </property>
     <addaction name="actionLoad_Project"/>
     <addaction name="actionSave_Project"/>
+    <addaction name="actionExport_EntityMap"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -215,6 +216,11 @@
   <action name="actionQuit">
    <property name="text">
     <string>&amp;Quit</string>
+   </property>
+  </action>
+  <action name="actionExport_EntityMap">
+   <property name="text">
+    <string>Export EntityMap</string>
    </property>
   </action>
  </widget>

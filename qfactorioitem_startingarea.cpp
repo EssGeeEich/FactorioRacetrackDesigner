@@ -129,6 +129,11 @@ void QFactorioItem<QFIT_STARTING_AREA>::populatePropertiesPanel(QWidget* panel)
 	});
 }
 
+QGraphicsStartingArea const* QFactorioItem<QFIT_STARTING_AREA>::graphics() const
+{
+	return m_gfx.get();
+}
+
 QDataStream& QFactorioItem<QFIT_STARTING_AREA>::save(QDataStream& dst) const
 {
 	// Save all the data required to represent this entity.

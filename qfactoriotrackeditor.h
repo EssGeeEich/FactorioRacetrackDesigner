@@ -46,6 +46,22 @@ public:
 		return ents;
 	}
 
+	template <typename T>
+	std::vector<T const*> findEntities() const
+	{
+		std::vector<T const*> ents;
+		ents.reserve(m_items.size());
+		for(auto it = m_items.begin(); it != m_items.end(); ++it)
+		{
+			T const* e = dynamic_cast<T const*>(it->get());
+			if(e)
+				ents.push_back(e);
+		}
+		ents.shrink_to_fit();
+		return ents;
+	}
+
+	QSize size() const;
 	bool checkId() const;
 	QFactorioBasicItem* getItem(quint32) const;
 

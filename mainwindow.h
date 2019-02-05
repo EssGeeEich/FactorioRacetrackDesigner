@@ -27,6 +27,8 @@ private slots:
 
 	void OnSelectedEntityChange();
 
+	void on_actionExport_EntityMap_triggered();
+
 private:
 
 	Ui::MainWindow *ui;
