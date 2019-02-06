@@ -1,90 +1,275 @@
 #include "qfactorioexporter.h"
 #include <QTextStream>
+#include <QRegExp>
 #include "qfactorioitem_checkpoint.h"
 #include "qfactorioitem_startingarea.h"
+#include "qserializable.h"
 
-namespace Generated {
+namespace LuaGen {
 
-	QTextStream& CheckpointRow::Print(QTextStream& s) const
+class Obj {
+public:
+	virtual ~Obj() {}
+	virtual QTextStream& save(QTextStream& s) const =0;
+	virtual bool isEmpty() { return true; }
+};
+
+QTextStream& escapeQStringKey(QTextStream& str, QString const& s)
+{
+	bool requireExpansion = false;
+	for(auto it = s.begin(); it != s.end(); ++it)
 	{
-		s << "[" << row << "]={";
-		for(auto it = yCoords.begin(); it != yCoords.end(); ++it)
+		if(it->isLetter() || (it->isNumber() && it != s.begin()))
+			continue;
+		requireExpansion = true;
+		break;
+	}
+
+	if(requireExpansion)
+	{
+		QString eqNum = "=";
+		int n = 0;
+		while(s.contains("]" + eqNum.repeated(n) + "]"))
+			++n;
+
+		str << "[ [" << eqNum.repeated(n) << "[" <<
+			 s <<
+			 "]" << eqNum.repeated(n) << "] ]";
+	}
+	else
+	{
+		str << s;
+	}
+	return str;
+}
+
+QTextStream& escapeQString(QTextStream& str, QString const& s)
+{
+	bool requireExpansion = false;
+	for(auto it = s.begin(); it != s.end(); ++it)
+	{
+		if(it->isLetterOrNumber() || (*it) == QChar(' '))
+			continue;
+		requireExpansion = true;
+		break;
+	}
+
+	if(requireExpansion)
+	{
+		QString eqNum = "=";
+		int n = 0;
+		while(s.contains("]" + eqNum.repeated(n) + "]"))
+			++n;
+
+		str << " [" << eqNum.repeated(n) << "[" <<
+			 s <<
+			 "]" << eqNum.repeated(n) << "] ";
+	}
+	else
+	{
+		str << "\"" << s << "\"";
+	}
+	return str;
+}
+
+template <typename T>
+class PlainObj : public Obj {
+	T m_data;
+public:
+	inline PlainObj(T data) : m_data(std::move(data)) {}
+	void setData(T const& d) { m_data = d; }
+	T const& data() const { return m_data; }
+	T& data() { return m_data; }
+	virtual bool isEmpty() override { return false; }
+};
+
+class StringObj : public PlainObj<QString> {
+	virtual QTextStream& save(QTextStream& s) const override {
+		return escapeQString(s, PlainObj<QString>::data());
+	}
+public:
+	using PlainObj<QString>::PlainObj;
+};
+
+template <typename T>
+class NumericObj : public PlainObj<T> {
+	static_assert (std::is_arithmetic<T>::value, "NumericObj<T>: T must be numeric.");
+	virtual QTextStream& save(QTextStream& s) const override {
+		return s << PlainObj<T>::data();
+	}
+public:
+	using PlainObj<T>::PlainObj;
+};
+
+class LiteralStringObj : public PlainObj<QString> {
+	virtual QTextStream& save(QTextStream& s) const override {
+		return s << PlainObj<QString>::data();
+	}
+public:
+	using PlainObj<QString>::PlainObj;
+};
+
+class ArrayObj : public Obj {
+	std::vector<std::unique_ptr<Obj>> m_data;
+public:
+	virtual bool isEmpty() override {
+		for(auto it = m_data.begin(); it != m_data.end(); ++it)
 		{
-			if(it != yCoords.begin())
+			if(*it && (*it)->isEmpty())
+				return false;
+		}
+		return true;
+	}
+	std::vector<std::unique_ptr<Obj>>& data() {
+		return m_data;
+	}
+	std::vector<std::unique_ptr<Obj>> const& data() const {
+		return m_data;
+	}
+	virtual QTextStream& save(QTextStream& s) const override {
+		s << "{";
+		for(auto it = m_data.begin(); it != m_data.end(); ++it)
+		{
+			if(it != m_data.begin())
 				s << ",";
-			s << "[" << *it << "]=true";
+
+			if(*it)
+				(*it)->save(s);
+			else
+				s << "nil";
 		}
 		s << "}";
 		return s;
 	}
+};
 
-	QTextStream& CheckpointLevel::Print(QTextStream& s) const
-	{
-		s << "{\n-- New Checkpoint --\n";
-		for(auto it = points.begin(); it != points.end(); ++it)
+class MapObj : public Obj {
+	std::map<QString, std::unique_ptr<Obj>> m_data;
+public:
+	virtual bool isEmpty() override {
+		for(auto it = m_data.begin(); it != m_data.end(); ++it)
 		{
-			if(it != points.begin())
-				s << ",\n";
-			it->Print(s);
+			if(!it->second->isEmpty())
+				return false;
 		}
-		s << "}";
-		return s;
+		return true;
 	}
+	void compact() {
+		auto it = m_data.begin();
 
-	QTextStream& StartingPoint::Print(QTextStream& s) const
-	{
-		return s << "{" << px << "," << py << "," << rot << "}";
-	}
-
-	QTextStream& LuaFile::Print(QTextStream& s) const
-	{
-		s <<"mapEnts = {\n"
-			"\tstarts = {\n"
-			"\t\t"
-			"";
-
-		for(auto it = starts.begin(); it != starts.end(); ++it)
+		while(it != m_data.end())
 		{
-			if(it != starts.begin())
-				s << ",\n\t\t";
-			it->Print(s);
+			if(it->second->isEmpty())
+			{
+				it = m_data.erase(it);
+			}
+			else
+			{
+				++it;
+			}
 		}
-		s <<"\n"
-			"\t},\n"
-			"\tcheckpoints = {\n"
-			"\t\t"
-			"";
-		for(auto it = levels.begin(); it != levels.end(); ++it)
-		{
-			if(it != levels.begin())
-				s << ",\n";
-			it->Print(s);
-		}
-		s << "\n"
-			 "\t}\n"
-			 "}";
-		return s;
 	}
+	std::map<QString, std::unique_ptr<Obj>>& data() {
+		return m_data;
+	}
+	std::map<QString, std::unique_ptr<Obj>> const& data() const{
+		return m_data;
+	}
+	virtual QTextStream& save(QTextStream& s) const override {
+		s << "{";
+		for(auto it = m_data.begin(); it != m_data.end(); ++it)
+		{
+			if(it != m_data.begin())
+				s << ",";
+
+			bool isInt = false;
+			int val = it->first.toInt(&isInt);
+			if(isInt)
+			{
+				s << "[" << val << "]";
+			}
+			else {
+				escapeQStringKey(s,it->first);
+			}
+
+
+			s << "=";
+			if(it->second)
+				it->second->save(s);
+			else
+				s << "nil";
+		}
+		return s << "}";
+	}
+};
 
 }
 
 bool QFactorioExporter::ExportScene(const QFactorioTrackEditor& m_scene, QTextStream& stream)
 {
-	Generated::LuaFile genFile;
+	LuaGen::MapObj genFile;
+	LuaGen::MapObj info;
 
 	// Generate the starting points
 	{
+		LuaGen::ArrayObj* startPoints = new LuaGen::ArrayObj;
+		info.data()["starts"].reset(startPoints);
+
 		std::vector<QFactorioItem<QFIT_STARTING_AREA> const*> starts =
 			m_scene.findEntities<QFactorioItem<QFIT_STARTING_AREA>>();
 		for(auto it = starts.begin(); it != starts.end(); ++it)
 		{
 			QFactorioItem<QFIT_STARTING_AREA> const* p = *it;
-			genFile.starts.emplace_back(p->graphics()->pos(), p->graphics()->rotation());
+			LuaGen::MapObj* startPoint = new LuaGen::MapObj;
+			startPoints->data().emplace_back(startPoint);
+
+			QPointF pos = p->graphics()->pos();
+			double rot = p->graphics()->rotation();
+			startPoint->data()["X"].reset(new LuaGen::NumericObj<double>(
+				pos.x()
+			));
+			startPoint->data()["Y"].reset(new LuaGen::NumericObj<double>(
+				pos.y()
+			));
+			startPoint->data()["R"].reset(new LuaGen::NumericObj<double>(
+				rot
+			));
 		}
 	}
 
+	LuaGen::MapObj* objectMap = new LuaGen::MapObj;
+	genFile.data()["map"].reset(objectMap);
+
+	auto getCoord = [=](int x, int y, QString subObj) -> LuaGen::MapObj*
+	{
+		std::unique_ptr<LuaGen::Obj>& xo = objectMap->data()[QString::number(x)];
+		if(!xo)
+			xo.reset(new LuaGen::MapObj);
+		LuaGen::MapObj* xo_map = dynamic_cast<LuaGen::MapObj*>(xo.get());
+		if(!xo_map)
+			return nullptr;
+
+		std::unique_ptr<LuaGen::Obj>& yo = xo_map->data()[QString::number(y)];
+		if(!yo)
+			yo.reset(new LuaGen::MapObj);
+		LuaGen::MapObj* yo_map = dynamic_cast<LuaGen::MapObj*>(yo.get());
+		if(!yo_map)
+			return nullptr;
+
+		if(subObj.isEmpty())
+			return yo_map;
+
+		std::unique_ptr<LuaGen::Obj>& sz = yo_map->data()[subObj];
+		if(!sz)
+			sz.reset(new LuaGen::MapObj);
+		return dynamic_cast<LuaGen::MapObj*>(sz.get());
+	};
+
 	// Generate the checkpoints
 	{
+		LuaGen::ArrayObj* checkPoints = new LuaGen::ArrayObj;
+		info.data()["checkpoints"].reset(checkPoints);
+
 		std::vector<QFactorioItem<QFIT_CHECKPOINT> const*> checkpoints =
 			m_scene.findEntities<QFactorioItem<QFIT_CHECKPOINT>>();
 
@@ -113,32 +298,38 @@ bool QFactorioExporter::ExportScene(const QFactorioTrackEditor& m_scene, QTextSt
 			if(!count)
 				break;
 
+			LuaGen::MapObj* checkpointInfo = new LuaGen::MapObj;
+			checkPoints->data().emplace_back(checkpointInfo);
+			checkpointInfo->data()["Enabled"].reset(new LuaGen::LiteralStringObj("true"));
+
 			const uchar* bits = imgRaster.bits();
 			int w = imgRaster.width();
 			int h = imgRaster.height();
 
-			Generated::CheckpointLevel level;
-			Generated::CheckpointRow row;
 			for(int x = 0; x < w; ++x)
 			{
-				row.row = x;
 				for(int y = 0; y < h; ++y)
 				{
 					if(bits[(y * w) + x] > 64)
-						row.yCoords.push_back(y);
-				}
+					{
+						LuaGen::MapObj* mapSpot = getCoord(x, y, "checkpoints");
 
-				if(row.yCoords.size())
-				{
-					level.points.push_back(std::move(row));
-					row.yCoords.clear();
+						mapSpot->data()[QString::number(i)].reset(
+							new LuaGen::LiteralStringObj("info.checkpoints[" + QString::number(i) + "]")
+						);
+					}
 				}
 			}
-			if(level.points.size())
-				genFile.levels.push_back(std::move(level));
 		}
 	}
 
-	genFile.Print(stream);
+	objectMap->compact();
+
+	stream << "info=";
+	info.save(stream);
+
+	stream << "\n"
+			  "gen=";
+	genFile.save(stream);
 	return stream.status() == QTextStream::Ok;
 }
