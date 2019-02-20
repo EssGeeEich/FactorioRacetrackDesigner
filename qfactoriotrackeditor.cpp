@@ -12,6 +12,11 @@ QFactorioTrackEditor::QFactorioTrackEditor()
 	  m_tree(nullptr)
 {}
 
+QPixmap QFactorioTrackEditor::backgroundPixmap() const
+{
+	return m_backgroundImage ? m_backgroundImage->pixmap() : QPixmap();
+}
+
 void QFactorioTrackEditor::setBackgroundPixmap(QPixmap const& pixmap)
 {
 	if(m_backgroundImage)

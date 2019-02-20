@@ -209,6 +209,7 @@ bool QFactorioExporter::ExportScene(const QFactorioTrackEditor& m_scene, QTextSt
 {
 	LuaGen::MapObj genFile;
 	LuaGen::MapObj info;
+	LuaGen::MapObj trackFile;
 
 	// Generate the starting points
 	{
@@ -323,13 +324,65 @@ bool QFactorioExporter::ExportScene(const QFactorioTrackEditor& m_scene, QTextSt
 		}
 	}
 
+	// Generate the Track File
+	{
+		QPixmap pixmap = m_scene.backgroundPixmap();
+		QImage img;
+		if(!pixmap.isNull())
+		{
+			img = pixmap.toImage();
+		}
+		if(!img.isNull())
+		{
+			trackFile.data()["width"].reset(new LuaGen::NumericObj<int>(img.width()));
+			trackFile.data()["height"].reset(new LuaGen::NumericObj<int>(img.height()));
+			LuaGen::ArrayObj* rows = new LuaGen::ArrayObj;
+			trackFile.data()["data"].reset(rows);
+
+			LuaGen::ArrayObj* items = nullptr;
+			auto push_int = [&](int num) {
+				items->data().push_back(std::unique_ptr<LuaGen::Obj>(new LuaGen::NumericObj<int>(
+					num
+				)));
+			};
+			for(int y = 0; y < img.height(); ++y)
+			{
+				items = new LuaGen::ArrayObj;
+				rows->data().push_back(std::unique_ptr<LuaGen::Obj>(items));
+
+				for(int x = 0; x < img.width(); )
+				{
+					QRgb firstPixel = img.pixel(x,y);
+					QFactorioPalette firstPalette = GetPalette(firstPixel);
+
+					int count = 1;
+					while(
+						((count+x) < img.width()) &&
+						IsSameColor(firstPixel, firstPalette, img.pixel(x+count,y))
+					)
+						++count;
+
+					push_int(static_cast<int>(firstPalette));
+					push_int(count);
+					x += count;
+				}
+			}
+		}
+	}
+
 	objectMap->compact();
 
-	stream << "info=";
+	stream << "local info=";
 	info.save(stream);
 
 	stream << "\n"
-			  "gen=";
+			  "local gen=";
 	genFile.save(stream);
+
+	stream << "\n"
+			  "local track=";
+	trackFile.save(stream);
+	stream << "\n"
+			  "return {info=info,gen=gen,track=track}";
 	return stream.status() == QTextStream::Ok;
 }

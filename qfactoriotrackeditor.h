@@ -26,6 +26,7 @@ public:
 	explicit QFactorioTrackEditor();
 	void initialize(QTreeWidget*);
 
+	QPixmap backgroundPixmap() const;
 	void setBackgroundPixmap(QPixmap const&);
 	QFactorioBasicItem* createNew(QFactorioItemType, QPointF);
 	QFactorioBasicItem* createNew(QByteArray const&, QPointF);
