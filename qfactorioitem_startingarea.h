@@ -30,7 +30,8 @@ public:
 	virtual QDataStream& save(QDataStream&) const override;
 	virtual QDataStream& load(QDataStream&) override;
 
-	QGraphicsStartingArea const* graphics() const;
+	QPointF centerPos() const;
+	double rotation() const;
 };
 
 #endif // QFACTORIOITEM_STARTINGAREA_H

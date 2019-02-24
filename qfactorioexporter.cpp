@@ -224,8 +224,8 @@ bool QFactorioExporter::ExportScene(const QFactorioTrackEditor& m_scene, QTextSt
 			LuaGen::MapObj* startPoint = new LuaGen::MapObj;
 			startPoints->data().emplace_back(startPoint);
 
-			QPointF pos = p->graphics()->pos();
-			double rot = p->graphics()->rotation();
+			QPointF pos = p->centerPos();
+			double rot = p->rotation();
 			startPoint->data()["X"].reset(new LuaGen::NumericObj<double>(
 				pos.x()
 			));

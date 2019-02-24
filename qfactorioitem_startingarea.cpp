@@ -129,9 +129,15 @@ void QFactorioItem<QFIT_STARTING_AREA>::populatePropertiesPanel(QWidget* panel)
 	});
 }
 
-QGraphicsStartingArea const* QFactorioItem<QFIT_STARTING_AREA>::graphics() const
+QPointF QFactorioItem<QFIT_STARTING_AREA>::centerPos() const
 {
-	return m_gfx.get();
+	return m_gfx.get()->boundingRect().center()
+			+ m_gfx.get()->pos();
+}
+
+double QFactorioItem<QFIT_STARTING_AREA>::rotation() const
+{
+	return m_gfx.get()->rotation();
 }
 
 QDataStream& QFactorioItem<QFIT_STARTING_AREA>::save(QDataStream& dst) const
